@@ -1,0 +1,4 @@
+name = "ImmutableList"
+uuid = "4a558cac-c1ed-11e9-20da-3584bcd8709a"
+authors = ["johti <johti17@liu.se>"]
+version = "0.1.0"
