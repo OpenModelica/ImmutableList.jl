@@ -1,4 +1,4 @@
 # ImmutableList.jl
-An implementation of immutable an immutable list for Julia
+An implementation of an immutable list for Julia
 
 WIP!
