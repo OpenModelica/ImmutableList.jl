@@ -36,6 +36,7 @@
 """
 module ListDef
 
+
 #=!!! Observe we only EVER create Nil{Any} !!!=#
 struct Nil{T} end
 
@@ -95,7 +96,7 @@ Base.eltype(::Nil) where {T} = let
   Any
 end
 
-#= O(n) =#
+""" O(n) """
 function listReverse(inLst::List{T})::List{T} where {T}
   local outLst::List = nil
   if isa(inLst, Nil)
@@ -110,6 +111,7 @@ function listReverse(inLst::List{T})::List{T} where {T}
   end
   outLst
 end
+
 
 """ For \"Efficient\" casting... O(N) * C" """
 List(T::Type #= Hack.. =#, args) = let
