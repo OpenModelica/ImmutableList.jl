@@ -35,6 +35,8 @@ import .ListDef
 using .ListDef
 
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
+export _cons
+
 include("util.jl")
 
 end # module
