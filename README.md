@@ -9,13 +9,13 @@ to get the head and the tail in constant time.
 ## List
 
 `List` is a single linked immutable list.
-*Usage:
+* Usage:
 ```julia
 a = List{Int}()    # Create a list of the given type.
 b = list(1,2,3)    # Creates a list of 3 elements
 c = 1 <| b         # Creates a new list C using the cons opertor <| with b as the tail.
 ```
-*Utility functions:
+* Utility functions:
 ```julia
 
 """ (length(lst1)), O(1) if either list is empty.. needs improvment """
