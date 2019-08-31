@@ -18,7 +18,7 @@ c = 1 <| b         # Creates a new list C using the cons opertor <| with b as th
 * Utility functions:
 ```julia
 
-""" (length(lst1)), O(1) if either list is empty """
+""" O(length(lst1)), O(1) if either list is empty """
 listAppend
 
 """ O(n) """
