@@ -182,7 +182,11 @@ responsibly.
 """
 function _cons(head::A, tail::Cons{B}) where {A,B}
   C = typejoin(A,B)
-  D = supertype(C)
+  if isabstracttype(C)
+    D = supertype(C)
+  else
+    D = C
+  end 
   if isstructtype(C) && !isabstracttype(C) && isabstracttype(D)
     Cons{D}(convert(D,head),convert(List{D},tail))
   else
