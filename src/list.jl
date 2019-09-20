@@ -145,10 +145,11 @@ end
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
   @assert S != Any
-  local lst::Cons{S} = Cons{S}(a, Cons{S}(b, nil))
-  for i in length(els):-1:1
+  local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+  for i in 1:length(els)
     lst = Cons{S}(els[i], lst)
   end
+  lst = listReverse(lst)
   lst
 end
 
