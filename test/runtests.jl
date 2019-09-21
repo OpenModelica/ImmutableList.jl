@@ -89,13 +89,30 @@ struct SUB <: SUPER
   B
 end
 struct SUB2 <: SUPER
+  C
+  D
+end
+
+@testset "Test the list construction order" begin
+
+@test let
+  try
+    lst::List{Any} = list(SUB(1,2), SUB2(3,4), SUB(4,5))
+    
+    SUB(1,2) == listGet(lst, 1) && SUB2(3,4) == listGet(lst, 2) && SUB(4,5) == listGet(lst, 3)
+  catch E
+    println(E)
+    false
+  end
+end
+
 end
 
 @test let
   try
     lst1::List{Any} = list(SUB(1,2), SUB(1,2), SUB(1,2))
     true
-  catch
+  catch E
     println(E)
     false
   end
@@ -129,7 +146,7 @@ end
 
 @test let
   try
-    x = cons(SUB(1,2), cons(SUB2(), Cons{SUB2}(SUB2(),nil)))
+    x = cons(SUB(1,2), cons(SUB2(3, 4), Cons{SUB2}(SUB2(5, 6),nil)))
     t = convert(List{SUPER},x)
     Cons{SUPER} == typeof(x)
   catch E
