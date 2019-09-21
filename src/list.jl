@@ -145,10 +145,11 @@ end
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
   @assert S != Any
-  local lst::Cons{S} = Cons{S}(a, Cons{S}(b, nil))
-  for i in length(els):-1:1
+  local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+  for i in 1:length(els)
     lst = Cons{S}(els[i], lst)
   end
+  lst = listReverse(lst)
   lst
 end
 
@@ -181,7 +182,11 @@ responsibly.
 """
 function _cons(head::A, tail::Cons{B}) where {A,B}
   C = typejoin(A,B)
-  D = supertype(C)
+  if isabstracttype(C)
+    D = supertype(C)
+  else
+    D = C
+  end 
   if isstructtype(C) && !isabstracttype(C) && isabstracttype(D)
     Cons{D}(convert(D,head),convert(List{D},tail))
   else
