@@ -112,6 +112,22 @@ function listReverse(inLst::List{T})::List{T} where {T}
   outLst
 end
 
+""" Same as listAppend.
+    However creates a list of the common abstract type instead.
+    See _cons
+"""
+function _listAppend(lst1::List{A}, lst2 = nil::List{B}) where {A, B}
+  if listEmpty(lst2)
+    return lst1
+  end
+  if listEmpty(lst1)
+    return lst2
+  end
+  for c in listReverse(lst1)
+    lst2 = _cons(c, lst2)
+  end
+  lst2
+end
 
 """ For \"Efficient\" casting... O(N) * C" """
 List(T::Type #= Hack.. =#, args) = let

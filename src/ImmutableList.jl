@@ -34,8 +34,10 @@ include("list.jl")
 import .ListDef
 using .ListDef
 
+struct ImmutableListException <: Exception end
+
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
-export _cons
+export _cons, ImmutableListException
 
 include("util.jl")
 
