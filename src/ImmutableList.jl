@@ -37,7 +37,7 @@ using .ListDef
 struct ImmutableListException <: Exception end
 
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
-export _cons, ImmutableListFailure
+export _cons, ImmutableListException
 
 include("util.jl")
 
