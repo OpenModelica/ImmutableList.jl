@@ -1,4 +1,9 @@
 
+""" Throws ImmutableListFailure """
+function listFail()
+  throw(ImmutableListFailure())
+end
+
 """ O(length(lst1)), O(1) if either list is empty.. needs improvment """
 
 function listAppend(lst1::List{T}, lst2 = nil::List{T})::List{T} where {T}
@@ -30,6 +35,9 @@ end
 
 """ O(index) """
 function listGet(lst::List{T}, index #= one-based index =#::Int)::T where {T}
+  if index < 1
+    listFail()
+  end
   if index == 1
     return listHead(lst)
   end
@@ -44,18 +52,34 @@ end
 
 """ O(1) """
 function listRest(lst::List{T})::List{T} where {T}
-  if isa(lst, Nil) nil else lst.tail end
+  if isa(lst, Nil)
+    listFail()
+  else
+   lst.tail
+  end
 end
 
 """ O(1) """
 function listHead(lst::List{T})::T where {T }
-  if isa(lst, Nil) nil else lst.head end
+  if isa(lst, Nil)
+    listFail()
+  else
+    lst.head
+  end
 end
 
 """ O(index) """
 function listDelete(inLst::List{A}, index #= one-based index =#::Int)::List{A} where {A}
-  local outLst::List{A}
-  #= Defined in the runtime =#
+  local outLst::List{A} = nil
+  local i = 1
+
+  for el in inLst:-1:1
+    if index != i
+      outLst = cons(el, outLst)
+    end
+    i = i + 1
+  end
+
   outLst
 end
 
@@ -74,3 +98,4 @@ export listRest
 export listHead
 export listDelete
 export listEmpty
+export ImmutableListException
