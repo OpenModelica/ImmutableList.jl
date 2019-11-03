@@ -56,14 +56,18 @@ Nil() = List()
   recursivly
 =#
 
-""" For converting lists with more then one element"""
+""" For converting lists with more than one element"""
 Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = let
   List(S, x)
 end
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
-  x isa T ? x : List(eltype(T), x)
+  if (T == Nil || T == Nil{Any})
+    return x
+  else
+    return x isa T ? x : List(eltype(T), x)
+  end
 end
 
 #= Identiy cases =#
@@ -160,7 +164,11 @@ end
 #= Support hieractical constructs. Concrete elements =#
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
-  @assert S != Any
+  #@assert S != Any
+  if S == Any
+    print("bummer(a, b, ...)!")
+  end
+
   local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
   for i in 1:length(els)
     lst = Cons{S}(els[i], lst)
@@ -177,7 +185,11 @@ end
 #= List of two elements =#
 function list(a::A, b::B) where {A, B}
   local S::Type = typejoin(A, B)
-  @assert S != Any
+  # @assert S != Any
+  if S == Any
+    print("bummer(a, b)!")
+  end
+
   Cons{S}(a, Cons{S}(b, nil))
 end
 
@@ -202,7 +214,7 @@ function _cons(head::A, tail::Cons{B}) where {A,B}
     D = supertype(C)
   else
     D = C
-  end 
+  end
   if isstructtype(C) && !isabstracttype(C) && isabstracttype(D)
     Cons{D}(convert(D,head),convert(List{D},tail))
   else

@@ -1,7 +1,7 @@
 
 """ Throws ImmutableListFailure """
 function listFail()
-  throw(ImmutableListException())
+  throw(ImmutableListException("listFail"))
 end
 
 """ O(length(lst1)), O(1) if either list is empty.. needs improvment """
