@@ -282,7 +282,13 @@ Base.sort(lst::List) = let
   list(sort(collect(lst))...)
 end
 
+macro list(elements...)
+  quote
+    $(esc(list(elements...)))
+  end
+end
+
 export List, list, cons, <|, nil, _cons
 export @do_threaded_for, Cons, Nil, listReverse
-
+export @list
 end
