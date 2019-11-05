@@ -161,6 +161,15 @@ function list(els::T...)::List{T} where {T <: Number}
   lst
 end
 
+#= Support for strings =#
+function list(els::T...)::List{T} where {T <: String}
+  local lst::List{T} = nil
+  for i in length(els):-1:1
+    lst = Cons{T}(els[i], lst)
+  end
+  lst
+end
+
 #= Support hieractical constructs. Concrete elements =#
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
