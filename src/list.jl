@@ -116,15 +116,20 @@ function listReverse(inLst::List{T})::List{T} where {T}
   outLst
 end
 
+""" O(1) """
+function _listEmpty(lst::List{T})::Bool where {T}
+  if isa(lst, Nil) true else false end;
+end
+
 """ Same as listAppend.
     However creates a list of the common abstract type instead.
     See _cons
 """
 function _listAppend(lst1::List{A}, lst2 = nil::List{B}) where {A, B}
-  if listEmpty(lst2)
+  if _listEmpty(lst2)
     return lst1
   end
-  if listEmpty(lst1)
+  if _listEmpty(lst1)
     return lst2
   end
   for c in listReverse(lst1)
@@ -304,6 +309,6 @@ Base.sort(lst::List) = let
 end
 
 export List, list, cons, <|, nil, _cons
-export @do_threaded_for, Cons, Nil, listReverse
+export @do_threaded_for, Cons, Nil, listReverse, _listAppend
 
 end
