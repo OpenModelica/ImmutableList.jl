@@ -56,14 +56,18 @@ Nil() = List()
   recursivly
 =#
 
-""" For converting lists with more then one element"""
+""" For converting lists with more than one element"""
 Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = let
   List(S, x)
 end
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
-  x isa T ? x : List(eltype(T), x)
+  if (T == Nil || T == Nil{Any})
+    return x
+  else
+    return x isa T ? x : List(eltype(T), x)
+  end
 end
 
 #= Identiy cases =#
@@ -112,15 +116,20 @@ function listReverse(inLst::List{T})::List{T} where {T}
   outLst
 end
 
+""" O(1) """
+function _listEmpty(lst::List{T})::Bool where {T}
+  if isa(lst, Nil) true else false end;
+end
+
 """ Same as listAppend.
     However creates a list of the common abstract type instead.
     See _cons
 """
 function _listAppend(lst1::List{A}, lst2 = nil::List{B}) where {A, B}
-  if listEmpty(lst2)
+  if _listEmpty(lst2)
     return lst1
   end
-  if listEmpty(lst1)
+  if _listEmpty(lst1)
     return lst2
   end
   for c in listReverse(lst1)
@@ -157,10 +166,23 @@ function list(els::T...)::List{T} where {T <: Number}
   lst
 end
 
+#= Support for strings =#
+function list(els::T...)::List{T} where {T <: String}
+  local lst::List{T} = nil
+  for i in length(els):-1:1
+    lst = Cons{T}(els[i], lst)
+  end
+  lst
+end
+
 #= Support hieractical constructs. Concrete elements =#
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
-  @assert S != Any
+  #@assert S != Any
+  if S == Any
+    print("bummer(a, b, ...)!")
+  end
+
   local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
   for i in 1:length(els)
     lst = Cons{S}(els[i], lst)
@@ -177,7 +199,11 @@ end
 #= List of two elements =#
 function list(a::A, b::B) where {A, B}
   local S::Type = typejoin(A, B)
-  @assert S != Any
+  # @assert S != Any
+  if S == Any
+    print("bummer(a, b)!")
+  end
+
   Cons{S}(a, Cons{S}(b, nil))
 end
 
@@ -202,7 +228,7 @@ function _cons(head::A, tail::Cons{B}) where {A,B}
     D = supertype(C)
   else
     D = C
-  end 
+  end
   if isstructtype(C) && !isabstracttype(C) && isabstracttype(D)
     Cons{D}(convert(D,head),convert(List{D},tail))
   else
@@ -283,6 +309,6 @@ Base.sort(lst::List) = let
 end
 
 export List, list, cons, <|, nil, _cons
-export @do_threaded_for, Cons, Nil, listReverse
+export @do_threaded_for, Cons, Nil, listReverse, _listAppend
 
 end
