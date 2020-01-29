@@ -40,6 +40,7 @@ end
 
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
 export _cons, ImmutableListException, @list
+export _listAppend
 
 
 include("util.jl")
