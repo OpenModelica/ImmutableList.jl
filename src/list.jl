@@ -38,7 +38,8 @@ module ListDef
 
 
 #=!!! Observe we only EVER create Nil{Any} !!!=#
-struct Nil{T} end
+struct Nil{T}
+end
 
 struct Cons{T}
   head::T
@@ -100,16 +101,18 @@ Base.eltype(::Nil) where {T} = let
   Any
 end
 
-""" O(n) """
-function listReverse(inLst::List{T})::List{T} where {T}
-  local outLst::List = nil
-  if isa(inLst, Nil)
-    return nil
-  end
-  while true
-    if isa(inLst, Nil)
-      break
-    end
+"""
+  O(1) Reverse of a nil list is nil
+"""
+function listReverse(inLst::Nil{T}) where {T}
+  return nil
+end
+
+""" O(n) Reverses an immutable list """
+function listReverse(inLst::Cons{T}) where {T}
+  local outLst = Cons{T}(inLst.head, nil)
+  inLst = inLst.tail
+  while !isa(inLst, Nil)
     outLst = Cons{T}(inLst.head, outLst)
     inLst = inLst.tail
   end
@@ -303,9 +306,24 @@ macro do_threaded_for(expr::Expr, iter_names::Expr, ranges...)
   make_threaded_for(expr, iter_names, ranges)
 end
 
-""" Sorts the list by first converting it into an array """
+""" 
+  Sorts the list by first converting it into an array 
+"""
 Base.sort(lst::List) = let
   list(sort(collect(lst))...)
+end
+
+"""
+  Sorts the list by first converting it into an array. 
+  Wraps the function argument in a lambda and revert the output since 
+  the semantics of sorting is inverted in Julia compared to MetaModelica.
+See the standard Julia sort method for more information.
+"""
+Base.sort(lst::List, arg::Function) = let
+  function λ(x, y)
+    !arg(x,y)
+  end
+  list(sort(collect(lst); lt = λ )...)
 end
 
 macro list(elements...)
