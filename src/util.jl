@@ -34,6 +34,10 @@ function listAppend(lst1::Cons{T}, lst2::Cons{T}) where {T}
   lst2
 end
 
+function listAppend(lst1::Cons{A}, lst2::Cons{B}) where {A, B}
+  _listAppend(lst1, lst2)
+end
+
 function listLength(lst::List{T})::Int where {T}
   length(lst)
 end
