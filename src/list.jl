@@ -41,9 +41,27 @@ module ListDef
 struct Nil{T}
 end
 
+
+#= if the head element is nil the list is empty.=#
+const nil = Nil{Any}()
+list() = nil
+
 struct Cons{T}
   head::T
   tail::Union{Nil, Cons{T}}
+end
+
+function Cons{T}(C::Base.Generator{UnitRange{T0}, T1}) where {T, T0, T1}
+  local iter::UnitRange{T0} = C.iter
+  local func::Function = C.f
+  local iterRev = reverse(iter)
+  local firstElem = func(first(iterRev))
+  local lst::Cons{T} = Cons{T}(firstElem, nil)
+  iterRev = iterRev[2:end]
+  for i in iterRev
+    lst = Cons{T}(func(i), lst)
+  end
+  return lst
 end
 
 const List{T} = Union{Nil{T}, Cons{T}, Nil}
@@ -64,7 +82,7 @@ end
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
-  if (T == Nil || T == Nil{Any})
+  if (T === Nil || T === Nil{Any})
     return x
   else
     return x isa T ? x : List(eltype(T), x)
@@ -74,7 +92,7 @@ end
 #= Identiy cases =#
 Base.convert(::Type{List{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Cons{T}}, x::Cons{T}) where {T} = x
-Base.convert(::Type{Nil}, x::Nil) where {T} = nil
+Base.convert(::Type{Nil}, x::Nil) = nil
 
 Base.promote_rule(a::Type{Cons{T}}, b::Type{Cons{S}}) where {T,S} = let
   el_same(promote_type(T,S), a, b)
@@ -93,11 +111,11 @@ Base.eltype(::Type{Cons{T}}) where {T} = let
   T
 end
 
-Base.eltype(::Type{Nil}) where {T} = let
+Base.eltype(::Type{Nil}) = let
   Nil
 end
 
-Base.eltype(::Nil) where {T} = let
+Base.eltype(::Nil) = let
   Any
 end
 
@@ -119,6 +137,8 @@ function listReverse(inLst::Cons{T}) where {T}
   outLst
 end
 
+Base.isempty(lst::List{T}) where {T} = _listEmpty(lst)
+
 """ O(1) """
 function _listEmpty(lst::List{T})::Bool where {T}
   if isa(lst, Nil) true else false end;
@@ -128,7 +148,7 @@ end
     However creates a list of the common abstract type instead.
     See _cons
 """
-function _listAppend(lst1::List{A}, lst2 = nil::List{B}) where {A, B}
+function _listAppend(lst1::List{A}, lst2 = nil::List) where {A}
   if _listEmpty(lst2)
     return lst1
   end
@@ -156,17 +176,23 @@ List(T::Type #= Hack.. =#, args) = let
   listReverse(lst1)
 end
 
-#= if the head element is nil the list is empty.=#
-const nil = List()
-list() = nil
-
 #= Support for primitive constructs. Numbers. Integer bool e.t.c =#
 function list(els::T...)::List{T} where {T <: Number}
-  local lst::List{T} = nil
-  for i in length(els):-1:1
-    lst = Cons{T}(els[i], lst)
+  if @generated
+    #println("Generate 1")
+    lst = :(nil)
+    for i in length(els):-1:1
+      lst = :(Cons{$(T)}(els[$(i)], $(lst)))
+    end
+    return lst
+  else
+    #println("Generate 2")
+    local lst::List{T} = nil
+    for i in length(els):-1:1
+      lst = Cons{T}(els[i], lst)
+    end
+    lst
   end
-  lst
 end
 
 #= Support for strings =#
@@ -183,7 +209,9 @@ function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
   #@assert S != Any
   if S == Any
-    print("bummer(a, b, ...)!")
+    local msg = "The resulting list became a list of any. Please check your code if this was not intentional.\n"
+    msg *= string("Involved types:", A, B)
+    @warn msg
   end
 
   local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
@@ -198,13 +226,69 @@ end
 function list(a::T) where {T}
   Cons{T}(a, nil)
 end
+include("generated.jl")
+
+# function list(a::A, b::B) where {A, B}
+#   local S::Type = typejoin(A, B)
+#   # @assert S != Any
+#   if  S === Any && A !== Any && B !== Any
+#     @warn begin
+#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#   end
+#   Cons{S}(a, Cons{S}(b, nil))
+# end
+
+
+
+#= Support hieractical constructs. Concrete elements =#
+# function list(a::A, b::B, els...) where {A, B}
+#     local S::Type = typejoin(A, B, eltype(els))
+#     #@assert S != Any
+#     if S === Any && A !== Any && B !== Any
+#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+#     for i in length(els):-1:1
+#       lst = Cons{S}(els[i], lst)
+#     end
+#     return lst
+# end
+
+#include("generated.jl")
+
+#= To be added later.  =#
+# function list(a::A, b::B) where {A, B}
+#   local S::Type = typejoin(A, B)
+#   # @assert S != Any
+#   if  S === Any && A !== Any && B !== Any
+#     @warn begin
+#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#   end
+#   Cons{S}(a, Cons{S}(b, nil))
+# end
+#= Support hieractical constructs. Concrete elements =#
+# function list(a::A, b::B, els...) where {A, B}
+#     local S::Type = typejoin(A, B, eltype(els))
+#     #@assert S != Any
+#     if S === Any && A !== Any && B !== Any
+#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+#     for i in length(els):-1:1
+#       lst = Cons{S}(els[i], lst)
+#     end
+#     return lst
+# end
 
 #= List of two elements =#
 function list(a::A, b::B) where {A, B}
   local S::Type = typejoin(A, B)
   # @assert S != Any
   if S == Any
-    print("bummer(a, b)!")
+    local msg = "The resulting list became a list of any. Please check your code if this was not intentional.\n"
+    msg *= string("Involved types:", A, B)
   end
 
   Cons{S}(a, Cons{S}(b, nil))
@@ -259,8 +343,9 @@ end
 
 Base.iterate(::Nil) = nothing
 Base.iterate(x::Cons, y::Nil) = nothing
-function Base.iterate(l::Cons, state::List = l)
-    state.head, state.tail
+function Base.iterate(l::Cons{T}, state::List{T} = l) where {T}
+  t = state.head, state.tail
+  t::Tuple{T, Any}
 end
 
 """
@@ -268,13 +353,75 @@ end
   Seems to be more efficient then what the omc currently does.
 """
 list(F, C::Base.Generator) = let
-  list(collect(Base.Generator(F, C))...)
+  #local seqArr = collect(seq)
+  local iter = C.iter
+  local func::Function = C.f
+  local lst = nil
+  local seq = collect(iter)
+  local rseq = reverse!(seq)
+  for i in rseq
+    lst = func(i) <| lst
+  end
+  return lst
 end
 
-""" Comprehension without a function(!) """
 list(C::Base.Generator) = let
-  #= Just apply the element to itself =#
   list(i->i, C)
+end
+
+"""
+  Iterate over collections specialized for UnitRange
+author:johti17
+"""
+function list(C::Base.Generator{UnitRange{T0}, T1}) where {T0, T1}
+  local iter::UnitRange{T0} = C.iter
+  local func::Function = C.f
+  local lst = nil
+  local iterRev = reverse(iter)
+  for i in iterRev
+    lst = func(i) <| lst
+  end
+  return lst
+end
+
+"""
+  Specialized function for iterations over a Vector{T}.
+author:johti17
+"""
+function list(C::Base.Generator{Vector{T0}, T1}) where {T0, T1}
+  local iter::Vector{T0}=  C.iter
+  local func = C.f
+  local iLen = length(iter)
+  if iLen == 0
+    return nil
+  end
+  lst = _cons(func(last(C.iter)), nil)
+  for i in iLen-1:-1:1
+    lst = _cons((@inbounds func(iter[i])), lst)
+  end
+  return lst
+end
+
+ """
+   Specialized function for iterations over a Cons{T}.
+ author:johti17
+ """
+function list(C::Base.Generator{Cons{T0}, T1}) where {T0, T1}
+  local iter =  C.iter
+  local func = C.f
+  local arr = listReverse(iter)
+  local lst = nil
+  for i in arr
+    lst = _cons(func(i), lst)
+  end
+  return lst
+end
+
+"""
+ Specialized function for iterations over a Nil{T}.
+"""
+function list(C::Base.Generator{Nil{T0}, T1}) where {T0, T1}
+  return nil
 end
 
 """ Adds the ability for Julia to flatten MMlists """
@@ -306,16 +453,16 @@ macro do_threaded_for(expr::Expr, iter_names::Expr, ranges...)
   make_threaded_for(expr, iter_names, ranges)
 end
 
-""" 
-  Sorts the list by first converting it into an array 
+"""
+  Sorts the list by first converting it into an array
 """
 Base.sort(lst::List) = let
   list(sort(collect(lst))...)
 end
 
 """
-  Sorts the list by first converting it into an array. 
-  Wraps the function argument in a lambda and revert the output since 
+  Sorts the list by first converting it into an array.
+  Wraps the function argument in a lambda and revert the output since
   the semantics of sorting is inverted in Julia compared to MetaModelica.
 See the standard Julia sort method for more information.
 """

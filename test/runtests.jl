@@ -98,7 +98,7 @@ end
 @test let
   try
     lst::List{Any} = list(SUB(1,2), SUB2(3,4), SUB(4,5))
-    
+
     SUB(1,2) == listGet(lst, 1) && SUB2(3,4) == listGet(lst, 2) && SUB(4,5) == listGet(lst, 3)
   catch E
     println(E)
@@ -243,4 +243,53 @@ end
         false
       end
   end
+  abstract type AbsFoo end
+  struct Foo <: AbsFoo
+    msg::String
+  end
+  struct FooBar <: AbsFoo
+    msg::String
+  end
+  #= Test to see if conversion to common abstract type works =#
+@test true == let
+  try
+    lst = list(Foo("a"), Foo("a"), Foo("a"), Foo("a"), Foo("a"), FooBar("c"), FooBar("c"))
+      eltype(lst) ===  AbsFoo
+  catch e
+    println("Conversion failure")
+    false
+  end
+end
+@test true == let
+  try
+    lst = list(
+      ("a", Foo("a")),
+      ("a", Foo("a")),
+      ("a", Foo("a")),
+      ("b", FooBar("b")),
+      ("b", FooBar("b")),
+      ("b", FooBar("b")),)
+    true
+  catch e
+    println("Conversion failure")
+    false
+  end
+end
+
+@test true == let
+  try
+    lst = list(
+      ("a", FooBar("a")),
+      ("b", FooBar("b")),
+      ("a", Foo("a")),
+      ("b", FooBar("b")),
+      ("b", FooBar("b")),
+      ("b", FooBar("b")),)
+    true
+  catch
+    println("Conversion failure")
+    false
+  end
+  end
+
 end

@@ -2,9 +2,8 @@
 
 **A single linked immutable list for Julia**
 
-This package provides a singly linked immutable list. 
-Along with common operations such as listHead and listRest
-to get the head and the tail in constant time.
+This package provides a singly linked immutable list.
+Along with common operations such as listHead and listRest to get the head and the tail in constant time.
 
 ## List
 
@@ -44,6 +43,5 @@ listEmpty
 
 ```
 
-Support for calling functions defined in the Julia core is also provided. 
+Support for calling functions defined in the Julia core is also provided.
 Such as eltype and length.
-
