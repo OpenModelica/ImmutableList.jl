@@ -282,6 +282,61 @@ include("generated.jl")
 #     return lst
 # end
 
+#= TODO =#
+# function list(a::A, b::B) where {A, B}
+#   local S::Type = typejoin(A, B)
+#   # @assert S != Any
+#   if  S === Any && A !== Any && B !== Any
+#     @warn begin
+#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#   end
+#   Cons{S}(a, Cons{S}(b, nil))
+# end
+
+
+
+#= Support hieractical constructs. Concrete elements =#
+# function list(a::A, b::B, els...) where {A, B}
+#     local S::Type = typejoin(A, B, eltype(els))
+#     #@assert S != Any
+#     if S === Any && A !== Any && B !== Any
+#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+#     for i in length(els):-1:1
+#       lst = Cons{S}(els[i], lst)
+#     end
+#     return lst
+# end
+
+#include("generated.jl")
+
+#= To be added later.  =#
+# function list(a::A, b::B) where {A, B}
+#   local S::Type = typejoin(A, B)
+#   # @assert S != Any
+#   if  S === Any && A !== Any && B !== Any
+#     @warn begin
+#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#   end
+#   Cons{S}(a, Cons{S}(b, nil))
+# end
+#= Support hieractical constructs. Concrete elements =#
+# function list(a::A, b::B, els...) where {A, B}
+#     local S::Type = typejoin(A, B, eltype(els))
+#     #@assert S != Any
+#     if S === Any && A !== Any && B !== Any
+#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
+#     end
+#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
+#     for i in length(els):-1:1
+#       lst = Cons{S}(els[i], lst)
+#     end
+#     return lst
+# end
+
 #= List of two elements =#
 function list(a::A, b::B) where {A, B}
   local S::Type = typejoin(A, B)

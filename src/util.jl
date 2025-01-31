@@ -141,22 +141,9 @@ function listDelete(inLst::List{A}, index #= one-based index =#::Int)::List{A} w
 end
 
 Base.string(lst::Nil) = let
-<<<<<<< Updated upstream
   "{}"
 end
 
-Base.string(lst::Cons{T}) where {T}= let
-  local res = "list{$(T)}["
-  local N = length(lst)
-  for (i,e) in enumerate(lst)
-    if i != N
-      res *= string(e) * ","
-    else
-      res *= string(e)
-    end
-  end
-  "list[]"
-end
 
 Base.string(lst::Cons{T}) where {T}= let
   local res = "list{$(T)}["
@@ -169,8 +156,6 @@ Base.string(lst::Cons{T}) where {T}= let
     end
   end
   res *= "]"
->>>>>>> Stashed changes
->>>>>>> 8cb95cd... Added compile time list generation
 end
 
 """
