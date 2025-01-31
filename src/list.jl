@@ -226,7 +226,6 @@ end
 function list(a::T) where {T}
   Cons{T}(a, nil)
 end
-include("generated.jl")
 
 # function list(a::A, b::B) where {A, B}
 #   local S::Type = typejoin(A, B)
