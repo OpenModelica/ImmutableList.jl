@@ -1,6 +1,7 @@
+const ILE = ImmutableListException("listFail")
 """ Throws ImmutableListFailure """
 function listFail()
-  throw(ImmutableListException("listFail"))
+  throw(ILE)
 end
 
 
@@ -220,3 +221,6 @@ export listHead
 export listDelete
 export listEmpty
 export ImmutableListException
+
+
+include("unsafe.jl")

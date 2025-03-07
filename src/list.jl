@@ -94,6 +94,7 @@ Base.convert(::Type{List{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Cons{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Nil}, x::Nil) = nil
 
+
 Base.promote_rule(a::Type{Cons{T}}, b::Type{Cons{S}}) where {T,S} = let
   el_same(promote_type(T,S), a, b)
 end
@@ -498,14 +499,32 @@ Generates the transformation:
 """
 function make_threaded_for(expr, iter_names, ranges)
   iterExpr::Expr = Expr(:tuple, iter_names.args...)
-  rangeExpr::Expr = ranges = [ranges...][1]
+  rangeExpr::Expr = ranges = first([ranges...])
   rangeExprArgs = rangeExpr.args
   :($expr for $iterExpr in [ zip($(rangeExprArgs...))... ]) |> esc
+end #Old implementation. Remove it.
+
+function make_threaded_for2(expr, iter_names, ranges)
+  local iterExpr::Expr = Expr(:tuple, iter_names.args...)
+  local rangeExpr = first(ranges)
+  local opFunc = Expr(:tmp, iterExpr.args...)
+  generatorCall = Expr(:call, :(Base.Generator), :operatorFunc, rangeExpr.args...)
+  quote
+    let
+      operatorFunc($(opFunc.args...)) = $expr
+      $(generatorCall)
+    end
+  end |> esc
 end
 
+# macro do_threaded_for(expr::Expr, iter_names::Expr, ranges...)
+#   make_threaded_for(expr, iter_names, ranges)
+# end
+
 macro do_threaded_for(expr::Expr, iter_names::Expr, ranges...)
-  make_threaded_for(expr, iter_names, ranges)
+  make_threaded_for2(expr, iter_names, ranges)
 end
+
 
 """
   Sorts the list by first converting it into an array
@@ -536,5 +555,6 @@ end
 export List, list, cons, <|, nil, _cons
 export @do_threaded_for, Cons, Nil, listReverse, _listAppend
 export @list
+
 
 end
