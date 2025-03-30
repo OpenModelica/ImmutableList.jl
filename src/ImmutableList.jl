@@ -30,13 +30,16 @@
  #/
 
 module ImmutableList
-include("list.jl")
-import .ListDef
-using .ListDef
+
 
 struct ImmutableListException <: Exception
     msg
 end
+
+include("list.jl")
+import .ListDef
+using .ListDef
+
 
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
 export _cons, ImmutableListException, @list

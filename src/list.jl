@@ -41,7 +41,6 @@ module ListDef
 struct Nil{T}
 end
 
-
 #= if the head element is nil the list is empty.=#
 const nil = Nil{Any}()
 list() = nil
@@ -64,7 +63,7 @@ function Cons{T}(C::Base.Generator{UnitRange{T0}, T1}) where {T, T0, T1}
   return lst
 end
 
-const List{T} = Union{Nil{T}, Cons{T}, Nil}
+const List{T} = Union{Nil{T}, Nil, Cons{T}}
 List() = Nil{Any}()
 Nil() = List()
 
@@ -82,7 +81,7 @@ end
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
-  if (T === Nil || T === Nil{Any})
+  if (T === Nil)
     return x
   else
     return x isa T ? x : List(eltype(T), x)
@@ -123,7 +122,7 @@ end
 """
   O(1) Reverse of a nil list is nil
 """
-function listReverse(inLst::Nil{T}) where {T}
+function listReverse(inLst::Nil)
   return nil
 end
 
@@ -131,7 +130,7 @@ end
 function listReverse(inLst::Cons{T}) where {T}
   local outLst = Cons{T}(inLst.head, nil)
   inLst = inLst.tail
-  while !isa(inLst, Nil)
+  while inLst !== nil
     outLst = Cons{T}(inLst.head, outLst)
     inLst = inLst.tail
   end
@@ -377,6 +376,7 @@ function _cons(head::A, tail::Cons{B}) where {A,B}
     Cons{C}(convert(C,head),convert(List{C},tail))
   end
 end
+
 _cons(head::T, tail::Nil) where {T} = Cons{T}(head, nil)
 
 consExternalC(::Type{T}, v :: X, l :: List{T}) where {T, X <: T} = Cons{T}(v, l) # Added for the C interface to be happy
@@ -397,17 +397,16 @@ function Base.length(l::List)::Int
 end
 
 Base.iterate(::Nil) = nothing
-Base.iterate(x::Cons, y::Nil) = nothing
-function Base.iterate(l::Cons{T}, state::List{T} = l) where {T}
-  t = state.head, state.tail
-  t::Tuple{T, Any}
+Base.iterate(lst::Cons{T}) where T = (lst.head, lst.tail)
+function Base.iterate(l::List{T}, state::List{T}) where {T}
+  iterate(state)
 end
 
 """
   For list comprehension. Unless we switch to mutable structs this is the way to go I think.
   Seems to be more efficient then what the omc currently does.
 """
-list(F, C::Base.Generator) = let
+function list(F, C::Base.Generator)
   #local seqArr = collect(seq)
   local iter = C.iter
   local func::Function = C.f
@@ -420,9 +419,7 @@ list(F, C::Base.Generator) = let
   return lst
 end
 
-list(C::Base.Generator) = let
-  list(i->i, C)
-end
+list(C::Base.Generator) = list(i->i, C)
 
 """
   Iterate over collections specialized for UnitRange
@@ -473,11 +470,32 @@ function list(C::Base.Generator{Cons{T0}, T1}) where {T0, T1}
 end
 
 """
- Specialized function for iterations over a Nil{T}.
+ Specialized function for iterations over a Nil.
 """
-function list(C::Base.Generator{Nil{T0}, T1}) where {T0, T1}
-  return nil
+list(C::Base.Generator{Nil, T1}) where {T1} = nil
+
+ """
+ Specialized function for iterations over a Cons{T}.
+ The argument `TYPE` can be supplied to specify the type of the resulting list.
+ author:johti17
+"""
+function List{TYPE}(C::Base.Generator{Cons{T0}, T1})::Cons{TYPE} where {TYPE, T0, T1}
+  local iter::List{T0} =  C.iter
+  local func = C.f
+  local lst::List{TYPE} = nil
+  while iter !== nil
+    ih = iter.head
+    iter = iter.tail
+    lst = Cons{TYPE}(func(ih)::TYPE, lst)::Cons{TYPE}
+  end
+  return listReverse(lst)
 end
+
+import ..ImmutableListException
+const UNSUPPORTED = ImmutableListException("Unsupported operation")
+List{TYPE}(C::Base.Generator) where {TYPE} = throw(UNSUPPORTED)
+List{TYPE}(C::Base.Generator{UnionAll, T1}) where {TYPE, T1} = nil
+List{TYPE}(C::Base.Generator{Nil, T1}) where {TYPE, T1} = nil
 
 """ Adds the ability for Julia to flatten MMlists """
 list(X::Base.Iterators.Flatten) = let
@@ -555,6 +573,5 @@ end
 export List, list, cons, <|, nil, _cons
 export @do_threaded_for, Cons, Nil, listReverse, _listAppend
 export @list
-
 
 end

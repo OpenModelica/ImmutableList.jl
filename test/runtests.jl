@@ -169,6 +169,19 @@ end
   @test length(lst2) == 1
 end
 
+@testset "List comprehension test. Using supplied type" begin
+  @test length(List{Int}(i for i in list())) == 0
+  lst = List{Int}(i*2 for i in list(1,2,3))
+  @test sum(lst) == 12
+  #= Test guard statement =#
+  try
+    lst2 = List{Int}(i for i in list(1,2,3) if i == 3)
+  catch
+  end
+  @test_skip sum(lst2) == 3
+  @test_skip length(lst2) == 1
+end
+
 #=We also need to support https://trac.openmodelica.org/OpenModelica/ticket/2816 =#
 @testset "Reduction and list flatten test" begin
 

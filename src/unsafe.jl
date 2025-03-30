@@ -10,7 +10,7 @@ function listReverseInPlace(inList::List{T})::List{T} where {T}
   listReverse(inList)
 end
 
-function listReverseInPlace2(inList::Nil{T}) where {T}
+function listReverseInPlace2(inList::Nil)
   return nil#MetaModelica.listReverse(inList)
 end
 
@@ -21,6 +21,9 @@ end
 function listReverseInPlace2(lst::Cons{T})::Cons{T} where {T}
   local prev::Cons{T} = Cons{T}(lst.head, nil)
   local originalPtr::Ptr{Nothing} = unsafe_pointer_from_objref(lst)
+  if lst.tail isa Nil
+    return lst
+  end
   lst = lst.tail::Cons{T}
   local oldCdr::Cons{T} = lst
   #= Declare an unsafe pointer to the list =#
@@ -79,7 +82,7 @@ end
 """
   We create one cons cell when the tail we are setting is a nil...
 """
-function listSetRest(inConsCell::Cons{A}, inNewRest::Nil) where {A} #= A non-empty list =#
+function listSetRest(inConsCell::Cons{A}, inNewRest) where {A} #= A non-empty list =#
   GC.@preserve begin
     local lstPtr::Ptr{Cons{A}} = unsafe_getListAsPtr(inConsCell)
     local val = inConsCell.head
@@ -87,6 +90,7 @@ function listSetRest(inConsCell::Cons{A}, inNewRest::Nil) where {A} #= A non-emp
   end
   return inConsCell
 end
+
 
 """ O(1). A destructive operation changing the \"first\" part of a cons-cell. """
 function listSetFirst(inConsCell::Cons{A}, inNewContent::A) where {A} #= A non-empty list =#
@@ -163,7 +167,7 @@ end
 
 function unsafe_getListAsPtr(lst::List{T}, TYPE) where {T}
   if lst === nil
-    ptrToNil::Ptr{Nil{Any}} = unsafe_pointer_from_objref(nil)
+    ptrToNil::Ptr{Nil} = unsafe_pointer_from_objref(nil)
     return Ptr{Cons{TYPE}}() #ptrToNil
   else
     Ptr{Cons{T}}(unsafe_pointer_from_objref(lst))::Ptr{Cons{T}}

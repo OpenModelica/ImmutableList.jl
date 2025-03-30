@@ -11,7 +11,7 @@ end
 listAppend(lst1::Nil, lst2::Nil)
 ```
 """
-function listAppend(lst1::Nil{T}, lst2::Nil) where {T}
+function listAppend(lst1::Nil, lst2::Nil)
   nil
 end
 
@@ -56,7 +56,7 @@ Optimize me:)
 """
 function listAppend(lst1::Cons{T}, lst2::Cons{T}) where {T}
   for c in listReverse(lst1)
-    lst2 = cons(c, lst2)
+    lst2 = Cons{T}(c, lst2)
   end
   lst2
 end
@@ -79,7 +79,7 @@ function listMember(element::T, lst::List{T})::Bool where {T}
   false
 end
 
-function listGet(lst::Nil{T}, index #= one-based index =#::Int)::T where {T}
+function listGet(lst::Nil, index #= one-based index =#::Int)
   listFail()
 end
 
@@ -104,7 +104,7 @@ end
   listRest for nil is not defined.
   Returns an error.
 """
-function listRest(lst::Nil{T}) where {T}
+function listRest(lst::Nil)
   listFail()
 end
 
@@ -117,10 +117,9 @@ end
 """
   The head of the nil element is undefined.
 """
-function listHead(lst::Nil{T})::T where {T}
+function listHead(lst::Nil)
   listFail()
 end
-
 
 """ Returns the head of a list.
 Time complexity: O(1) """
@@ -167,7 +166,7 @@ function listEmpty(lst::Cons{T})::Bool where {T}
 end
 
 """ A list consisting of a nil element is empty """
-function listEmpty(lst::Nil{T})::Bool where {T}
+function listEmpty(lst::Nil)::Bool
   true
 end
 
