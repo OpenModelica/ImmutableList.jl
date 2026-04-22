@@ -171,15 +171,20 @@ end
 
 @testset "List comprehension test. Using supplied type" begin
   @test length(List{Int}(i for i in list())) == 0
+  @test length(List{Float64}(i for i in list())) == 0
+  @test length(List{Float16}(i for i in list())) == 0
   lst = List{Int}(i*2 for i in list(1,2,3))
   @test sum(lst) == 12
   #= Test guard statement =#
-  try
-    lst2 = List{Int}(i for i in list(1,2,3) if i == 3)
-  catch
-  end
-  @test_skip sum(lst2) == 3
-  @test_skip length(lst2) == 1
+  lst2 = List{Int}(i for i in list(1,2,3) if i == 3)
+  @test listHead(lst2) == 3
+  @test length(lst2) == 1
+  lst3 = List{Float64}(i for i in list(1.0, 2.0, 3.0) if i == 3.0)
+  @test listHead(lst3) == 3.0
+  @test length(lst3) == 1
+  lst4 = List{Float16}(i for i in list(Float16(1), Float16(2), Float16(3)) if i == Float16(3))
+  @test listHead(lst4) == Float16(3)
+  @test length(lst4) == 1
 end
 
 #=We also need to support https://trac.openmodelica.org/OpenModelica/ticket/2816 =#
@@ -305,4 +310,56 @@ end
   end
   end
 
+end
+
+@testset "Unsafe destructive operations" begin
+  import ImmutableList.Unsafe
+
+  @test begin
+    c = list(10, 20, 30)
+    Unsafe.listSetFirst(c, 99)
+    collect(c) == [99, 20, 30]
+  end
+
+  @test begin
+    c = list(10, 20, 30)
+    Unsafe.listSetFirst(c.tail, 222)
+    collect(c) == [10, 222, 30]
+  end
+
+  @test begin
+    c = list("a", "b", "c")
+    Unsafe.listSetFirst(c, "replaced")
+    collect(c) == ["replaced", "b", "c"]
+  end
+
+  @test begin
+    c = list(1, 2, 3)
+    Unsafe.listSetRest(c, nil)
+    collect(c) == [1]
+  end
+
+  @test begin
+    c = list(1, 2, 3)
+    Unsafe.listSetRest(c, list(99))
+    collect(c) == [1, 99]
+  end
+
+  @test begin
+    c = list(1, 2)
+    Unsafe.listSetRest(c, list(100, 200, 300))
+    collect(c) == [1, 100, 200, 300]
+  end
+
+  @test begin
+    c = list(1, 2, 3, 4, 5)
+    r = Unsafe.listReverseInPlaceUnsafe(c)
+    collect(r) == [5, 4, 3, 2, 1]
+  end
+
+  @test Unsafe.listReverseInPlaceUnsafe(nil) === nil
+
+  @test Unsafe.listArrayLiteral(list(1, 2, 3)) == [1, 2, 3]
+  @test Unsafe.listArrayLiteral(list("x", "y")) == ["x", "y"]
+  @test Unsafe.listArrayLiteral(nil) isa Vector
 end

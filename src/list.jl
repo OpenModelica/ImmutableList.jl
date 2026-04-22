@@ -93,6 +93,17 @@ Base.convert(::Type{List{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Cons{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Nil}, x::Nil) = nil
 
+#= Convert ImmutableList to Vector - needed because many struct fields
+   transitioned from List{T} to Vector{T} but callers still use list(...) =#
+function Base.convert(::Type{Vector{T}}, x::Cons) where {T}
+  result = T[]
+  for item in x
+    push!(result, convert(T, item))
+  end
+  result
+end
+Base.convert(::Type{Vector{T}}, ::Nil) where {T} = T[]
+
 
 Base.promote_rule(a::Type{Cons{T}}, b::Type{Cons{S}}) where {T,S} = let
   el_same(promote_type(T,S), a, b)
@@ -122,12 +133,12 @@ end
 """
   O(1) Reverse of a nil list is nil
 """
-function listReverse(inLst::Nil)
+Base.@assume_effects:foldable function listReverse(inLst::Nil)
   return nil
 end
 
 """ O(n) Reverses an immutable list """
-function listReverse(inLst::Cons{T}) where {T}
+Base.@assume_effects :foldable function listReverse(inLst::Cons{T}) where {T}
   local outLst = Cons{T}(inLst.head, nil)
   inLst = inLst.tail
   while inLst !== nil
@@ -156,7 +167,7 @@ function _listAppend(lst1::List{A}, lst2 = nil::List) where {A}
     return lst2
   end
   for c in listReverse(lst1)
-    lst2 = _cons(c, lst2)
+    lst2 = Cons{A}(c, lst2)
   end
   lst2
 end
@@ -180,6 +191,24 @@ end
 function list(els::T...)::List{T} where {T <: Number}
   if @generated
     #println("Generate 1")
+    lst = :(nil)
+    for i in length(els):-1:1
+      lst = :(Cons{$(T)}(els[$(i)], $(lst)))
+    end
+    return lst
+  else
+    #println("Generate 2")
+    local lst::List{T} = nil
+    for i in length(els):-1:1
+      lst = Cons{T}(els[i], lst)
+    end
+    lst
+  end
+end
+
+function list(els::T...)::List{T} where {T}
+  if @generated
+    println("Generate 1")
     lst = :(nil)
     for i in length(els):-1:1
       lst = :(Cons{$(T)}(els[$(i)], $(lst)))
@@ -226,115 +255,6 @@ end
 function list(a::T) where {T}
   Cons{T}(a, nil)
 end
-
-# function list(a::A, b::B) where {A, B}
-#   local S::Type = typejoin(A, B)
-#   # @assert S != Any
-#   if  S === Any && A !== Any && B !== Any
-#     @warn begin
-#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#   end
-#   Cons{S}(a, Cons{S}(b, nil))
-# end
-
-
-
-#= Support hieractical constructs. Concrete elements =#
-# function list(a::A, b::B, els...) where {A, B}
-#     local S::Type = typejoin(A, B, eltype(els))
-#     #@assert S != Any
-#     if S === Any && A !== Any && B !== Any
-#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
-#     for i in length(els):-1:1
-#       lst = Cons{S}(els[i], lst)
-#     end
-#     return lst
-# end
-
-#include("generated.jl")
-
-#= To be added later.  =#
-# function list(a::A, b::B) where {A, B}
-#   local S::Type = typejoin(A, B)
-#   # @assert S != Any
-#   if  S === Any && A !== Any && B !== Any
-#     @warn begin
-#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#   end
-#   Cons{S}(a, Cons{S}(b, nil))
-# end
-#= Support hieractical constructs. Concrete elements =#
-# function list(a::A, b::B, els...) where {A, B}
-#     local S::Type = typejoin(A, B, eltype(els))
-#     #@assert S != Any
-#     if S === Any && A !== Any && B !== Any
-#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
-#     for i in length(els):-1:1
-#       lst = Cons{S}(els[i], lst)
-#     end
-#     return lst
-# end
-
-#= TODO =#
-# function list(a::A, b::B) where {A, B}
-#   local S::Type = typejoin(A, B)
-#   # @assert S != Any
-#   if  S === Any && A !== Any && B !== Any
-#     @warn begin
-#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#   end
-#   Cons{S}(a, Cons{S}(b, nil))
-# end
-
-
-
-#= Support hieractical constructs. Concrete elements =#
-# function list(a::A, b::B, els...) where {A, B}
-#     local S::Type = typejoin(A, B, eltype(els))
-#     #@assert S != Any
-#     if S === Any && A !== Any && B !== Any
-#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
-#     for i in length(els):-1:1
-#       lst = Cons{S}(els[i], lst)
-#     end
-#     return lst
-# end
-
-#include("generated.jl")
-
-#= To be added later.  =#
-# function list(a::A, b::B) where {A, B}
-#   local S::Type = typejoin(A, B)
-#   # @assert S != Any
-#   if  S === Any && A !== Any && B !== Any
-#     @warn begin
-#       "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#   end
-#   Cons{S}(a, Cons{S}(b, nil))
-# end
-#= Support hieractical constructs. Concrete elements =#
-# function list(a::A, b::B, els...) where {A, B}
-#     local S::Type = typejoin(A, B, eltype(els))
-#     #@assert S != Any
-#     if S === Any && A !== Any && B !== Any
-#       @warn "Unstable Immutable List created with the following types\n $(A), $(B), $(S)"
-#     end
-#     local lst::Cons{S} = Cons{S}(b, Cons{S}(a, nil))
-#     for i in length(els):-1:1
-#       lst = Cons{S}(els[i], lst)
-#     end
-#     return lst
-# end
 
 #= List of two elements =#
 function list(a::A, b::B) where {A, B}
@@ -388,7 +308,7 @@ consExternalC(::Type{T}, v :: X, l :: List{T}) where {T, X <: T} = Cons{T}(v, l)
 
 Base.length(l::Nil)::Int = 0
 
-function Base.length(l::List)::Int
+Base.@assume_effects :foldable function Base.length(l::List)::Int
   local n::Int = 0
   for _ in l
     n += 1
@@ -472,7 +392,7 @@ end
 """
  Specialized function for iterations over a Nil.
 """
-list(C::Base.Generator{Nil, T1}) where {T1} = nil
+list(C::Base.Generator{<:Nil, T1}) where {T1} = nil
 
  """
  Specialized function for iterations over a Cons{T}.
@@ -492,10 +412,18 @@ function List{TYPE}(C::Base.Generator{Cons{T0}, T1})::Cons{TYPE} where {TYPE, T0
 end
 
 import ..ImmutableListException
-const UNSUPPORTED = ImmutableListException("Unsupported operation")
-List{TYPE}(C::Base.Generator) where {TYPE} = throw(UNSUPPORTED)
+function List{TYPE}(C::Base.Generator)::List{TYPE} where {TYPE}
+  local iter = C.iter
+  local func::Function = C.f
+  local seq = collect(iter)
+  local lst::List{TYPE} = nil
+  for i in reverse!(seq)
+    lst = Cons{TYPE}(func(i)::TYPE, lst)::Cons{TYPE}
+  end
+  return lst
+end
 List{TYPE}(C::Base.Generator{UnionAll, T1}) where {TYPE, T1} = nil
-List{TYPE}(C::Base.Generator{Nil, T1}) where {TYPE, T1} = nil
+List{TYPE}(C::Base.Generator{<:Nil, T1}) where {TYPE, T1} = nil
 
 """ Adds the ability for Julia to flatten MMlists """
 list(X::Base.Iterators.Flatten) = let

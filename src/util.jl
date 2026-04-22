@@ -128,16 +128,17 @@ function listHead(lst::Cons{T})::T where {T}
 end
 
 """ O(index) """
-function listDelete(inLst::List{A}, index #= one-based index =#::Int)::List{A} where {A}
+function listDelete(inLst::List{A},
+                    index #= one-based index =#::Int)::List{A} where {A}
   local outLst::List{A} = nil
   local i = 1
-  for el in inLst:-1:1
+  for el in inLst
     if index != i
       outLst = cons(el, outLst)
     end
-    i = i + 1
+    i += 1
   end
-  outLst
+  listReverse(outLst)
 end
 
 Base.string(lst::Nil) = let
@@ -220,6 +221,3 @@ export listHead
 export listDelete
 export listEmpty
 export ImmutableListException
-
-
-include("unsafe.jl")

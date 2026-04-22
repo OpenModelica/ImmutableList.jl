@@ -43,9 +43,11 @@ using .ListDef
 
 export List, list, Nil, nil, Cons, cons, @do_threaded_for, <|
 export _cons, ImmutableListException, @list
-export _listAppend
+export _listAppend, listAppend
 
 using .ListDef
 include("util.jl")
+
+include("unsafe.jl")
 
 end # module
