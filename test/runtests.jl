@@ -169,6 +169,12 @@ end
   @test length(lst2) == 1
 end
 
+@testset "listAppend type widening" begin
+  lst = listAppend(list(1, 2, 3), list(4.0, 5))
+  @test eltype(lst) === Real
+  @test lst == Cons{Real}(1, Cons{Real}(2, Cons{Real}(3, Cons{Real}(4.0, Cons{Real}(5, Nil())))))
+end
+
 @testset "List comprehension test. Using supplied type" begin
   @test length(List{Int}(i for i in list())) == 0
   @test length(List{Float64}(i for i in list())) == 0

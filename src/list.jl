@@ -159,15 +159,21 @@ end
     However creates a list of the common abstract type instead.
     See _cons
 """
-function _listAppend(lst1::List{A}, lst2 = nil::List) where {A}
+function _listAppend(lst1::List{A}) where {A}
+  lst1
+end
+
+function _listAppend(lst1::List{A}, lst2::List{B}) where {A, B}
   if _listEmpty(lst2)
     return lst1
   end
   if _listEmpty(lst1)
     return lst2
   end
+  local C::Type = typejoin(A, B)
+  lst2 = convert(List{C}, lst2)
   for c in listReverse(lst1)
-    lst2 = Cons{A}(c, lst2)
+    lst2 = Cons{C}(convert(C, c), lst2)
   end
   lst2
 end
