@@ -69,8 +69,9 @@ function listLength(lst::List{T})::Int where {T}
   length(lst)
 end
 
-""" O(n) """
-function listMember(element::T, lst::List{T})::Bool where {T}
+""" O(n). The element may be a different subtype than the list's element type
+(MetaModelica lists are covariant). """
+function listMember(element, lst::List)::Bool
   for e in lst
     if e == element
       return true
