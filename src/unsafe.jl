@@ -52,6 +52,19 @@ end
   return inConsCell
 end
 
+# Heterogeneous fallback: MetaModelica lists are untyped, so a cell may take a
+# rest of a different concrete eltype (DoubleEnded builders). Layout-identical.
+@noinline function listSetRest(inConsCell::Cons{T}, inNewRest::Union{Nil, Cons})::Cons{T} where {T}
+  GC.@preserve inConsCell inNewRest begin
+    slot = Ptr{Ptr{Cvoid}}(_value_ptr(inConsCell) + _tailOffset(Cons{T}))
+    unsafe_store!(slot, _value_ptr(inNewRest))
+  end
+  if inNewRest isa Cons
+    _queue_root(inConsCell)
+  end
+  return inConsCell
+end
+
 """ O(1). A destructive operation changing the \"first\" part of a cons-cell. """
 @noinline function listSetFirst(inConsCell::Cons{T}, inNewContent::T)::Cons{T} where {T}
   GC.@preserve inConsCell inNewContent begin
