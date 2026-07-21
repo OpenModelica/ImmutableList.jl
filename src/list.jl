@@ -243,7 +243,9 @@ end
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
   #@assert S != Any
-  if S == Any
+  if S == Any && get(ENV, "OM_WARN_ANYLIST", "") == "1"
+    # Off by default: Cons{Any} is a normal MetaModelica case, and the per-call
+    # @warn otherwise floods logs and dominates runtime in hot backend loops.
     local msg = "The resulting list became a list of any. Please check your code if this was not intentional.\n"
     msg *= string("Involved types:", A, B)
     @warn msg
