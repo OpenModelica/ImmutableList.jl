@@ -329,6 +329,8 @@ Base.iterate(lst::Cons{T}) where T = (lst.head, lst.tail)
 function Base.iterate(l::List{T}, state::List{T}) where {T}
   iterate(state)
 end
+# Heterogeneous cells may be linked via listSetRest; the state eltype can differ.
+Base.iterate(l::List, state::List) = iterate(state)
 
 """
   For list comprehension. Unless we switch to mutable structs this is the way to go I think.
