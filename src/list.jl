@@ -140,10 +140,19 @@ end
 """ O(n) Reverses an immutable list """
 Base.@assume_effects :foldable function listReverse(inLst::Cons{T}) where {T}
   local outLst = Cons{T}(inLst.head, nil)
-  inLst = inLst.tail
-  while inLst !== nil
-    outLst = Cons{T}(inLst.head, outLst)
-    inLst = inLst.tail
+  local cur::Any = inLst.tail
+  while cur !== nil
+    # heterogeneous cells may be linked via listSetRest; widen when detected
+    if !(cur isa Cons{T})
+      local acc::List = outLst
+      while cur !== nil
+        acc = _cons(cur.head, acc)
+        cur = cur.tail
+      end
+      return acc
+    end
+    outLst = Cons{T}(cur.head, outLst)
+    cur = cur.tail
   end
   outLst
 end
@@ -171,11 +180,12 @@ function _listAppend(lst1::List{A}, lst2::List{B}) where {A, B}
     return lst2
   end
   local C::Type = typejoin(A, B)
-  lst2 = convert(List{C}, lst2)
+  local out::List = convert(List{C}, lst2)
   for c in listReverse(lst1)
-    lst2 = Cons{C}(convert(C, c), lst2)
+    # heterogeneous cells may carry elements outside typejoin(A, B); widen
+    out = (c isa C && out isa Union{Nil, Cons{C}}) ? Cons{C}(c, out) : _cons(c, out)
   end
-  lst2
+  out
 end
 
 """ For \"Efficient\" casting... O(N) * C" """

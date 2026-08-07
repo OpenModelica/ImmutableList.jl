@@ -55,10 +55,19 @@ TODO:
 Optimize me:)
 """
 function listAppend(lst1::Cons{T}, lst2::Cons{T}) where {T}
-  for c in listReverse(lst1)
-    lst2 = Cons{T}(c, lst2)
+  local rev = listReverse(lst1)
+  if rev isa Cons{T}
+    for c in rev
+      lst2 = Cons{T}(c, lst2)
+    end
+    return lst2
   end
-  lst2
+  # heterogeneous chain: rev is already reversed, cons back in order
+  local out::List = lst2
+  for c in rev
+    out = _cons(c, out)
+  end
+  out
 end
 
 function listAppend(lst1::Cons{A}, lst2::Cons{B}) where {A, B}
