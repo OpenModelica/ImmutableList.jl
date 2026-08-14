@@ -47,9 +47,7 @@ list() = nil
 
 struct Cons{T}
   head::T
-  # Untyped tail: listSetRest links heterogeneous cells; a typed field makes
-  # compiled union-splits stop at the type boundary (silent chain truncation).
-  tail::Union{Nil, Cons}
+  tail::Union{Nil, Cons{T}}
 end
 
 function Cons{T}(C::Base.Generator{UnitRange{T0}, T1}) where {T, T0, T1}
