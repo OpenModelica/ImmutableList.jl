@@ -301,6 +301,10 @@ may avoid future type conversions on the entire list to occur.
 Use this in particular in generated code where you cannot use cons
 responsibly.
 """
+# Homogeneous fast path: no typejoin, no tail conversion (the generic method
+# below converts the WHOLE tail when eltypes differ - O(n) per cons).
+_cons(head::T, tail::Cons{T}) where {T} = Cons{T}(head, tail)
+
 function _cons(head::A, tail::Cons{B}) where {A,B}
   C = typejoin(A,B)
   if isabstracttype(C)
@@ -381,15 +385,14 @@ end
 author:johti17
 """
 function list(C::Base.Generator{Vector{T0}, T1}) where {T0, T1}
-  local iter::Vector{T0}=  C.iter
-  local func = C.f
-  local iLen = length(iter)
-  if iLen == 0
-    return nil
-  end
-  lst = _cons(func(last(C.iter)), nil)
-  for i in iLen-1:-1:1
-    lst = _cons((@inbounds func(iter[i])), lst)
+  local iter::Vector{T0} = C.iter
+  isempty(iter) && return nil
+  # Fixed-eltype build; see the Cons-generator method for the rationale.
+  local vals = Base.collect(Base.Generator(C.f, iter))
+  local S = eltype(vals)
+  local lst::List = nil
+  for i in lastindex(vals):-1:1
+    lst = Cons{S}((@inbounds vals[i]), lst)
   end
   return lst
 end
@@ -399,12 +402,14 @@ end
  author:johti17
  """
 function list(C::Base.Generator{Cons{T0}, T1}) where {T0, T1}
-  local iter =  C.iter
-  local func = C.f
-  local arr = listReverse(iter)
-  local lst = nil
-  for i in arr
-    lst = _cons(func(i), lst)
+  # Map into a Vector first: the eltype is computed ONCE and the cons chain is
+  # built with a fixed Cons{S} - the per-element _cons typejoin/convert otherwise
+  # rebuilds the accumulated tail on every eltype change (quadratic).
+  local vals = Base.collect(Base.Generator(C.f, C.iter))
+  local S = eltype(vals)
+  local lst::List = nil
+  for i in lastindex(vals):-1:1
+    lst = Cons{S}((@inbounds vals[i]), lst)
   end
   return lst
 end
