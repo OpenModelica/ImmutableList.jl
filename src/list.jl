@@ -88,6 +88,11 @@ Base.convert(::Type{T}, x::Cons) where {T <: List} = let
   end
 end
 
+#= Empty lists: nil is Nil{Any}, but a List{T} annotation requires Nil{T}.
+   Zero-size immutable, so Nil{T}() is free. =#
+Base.convert(::Type{List{T}}, x::Nil) where {T} = Nil{T}()
+Base.convert(::Type{Nil{T}}, x::Nil) where {T} = Nil{T}()
+
 #= Identiy cases =#
 Base.convert(::Type{List{T}}, x::Cons{T}) where {T} = x
 Base.convert(::Type{Cons{T}}, x::Cons{T}) where {T} = x
