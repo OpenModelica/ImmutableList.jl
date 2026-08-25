@@ -74,17 +74,31 @@ Nil() = List()
   recursivly
 =#
 
-""" For converting lists with more than one element"""
-Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = let
-  List(S, x)
+#= A converting assignment REBUILDS the cons chain, so the target no longer
+   aliases the source. That is invisible at the call site and has already cost
+   one silent-truncation bug, so it can be made loud while typed list fields are
+   being rolled out: set STRICT_CONVERT[] = true and every rebuilding convert
+   throws, naming the producer. Off by default; behaviour is then unchanged. =#
+const STRICT_CONVERT = Ref(false)
+
+@noinline function _rebuild_convert(::Type{S}, x) where {S}
+  if STRICT_CONVERT[]
+    error("ImmutableList: converting ", typeof(x), " to ", S,
+          " REBUILDS the list, severing aliasing. Fix the producer to emit the ",
+          "target element type instead of relying on the convert.")
+  end
+  return List(S, x)
 end
+
+""" For converting lists with more than one element"""
+Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = _rebuild_convert(S, x)
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
   if (T === Nil)
     return x
   else
-    return x isa T ? x : List(eltype(T), x)
+    return x isa T ? x : _rebuild_convert(eltype(T), x)
   end
 end
 
