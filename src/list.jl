@@ -81,11 +81,19 @@ Nil() = List()
    throws, naming the producer. Off by default; behaviour is then unchanged. =#
 const STRICT_CONVERT = Ref(false)
 
+const _REBUILD_SEEN = Set{Tuple{DataType,Type}}()
+
 @noinline function _rebuild_convert(::Type{S}, x) where {S}
+  # REPORT, never throw: MetaModelica's @matchcontinue catches every exception
+  # and turns it into arm failure, so throwing here would hide the diagnosis
+  # behind an "unfinished match". Print each producer once instead.
   if STRICT_CONVERT[]
-    error("ImmutableList: converting ", typeof(x), " to ", S,
-          " REBUILDS the list, severing aliasing. Fix the producer to emit the ",
-          "target element type instead of relying on the convert.")
+    k = (typeof(x), S)
+    if !(k in _REBUILD_SEEN)
+      push!(_REBUILD_SEEN, k)
+      Base.println(Base.stderr, "REBUILD-CONVERT ", typeof(x), " -> List{", S,
+                   "} (aliasing severed; fix the producer)")
+    end
   end
   return List(S, x)
 end
