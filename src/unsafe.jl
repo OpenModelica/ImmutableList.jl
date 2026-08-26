@@ -52,9 +52,14 @@ end
   return inConsCell
 end
 
-# Heterogeneous fallback: MetaModelica lists are untyped, so a cell may take a
-# rest of a different concrete eltype (DoubleEnded builders). Layout-identical.
+# Heterogeneous fallback. LAYOUT SAFETY: only a Cons{Any} target has a plain
+# pointer tail slot; a typed cell stores an inline head and different offsets,
+# so a foreign rest there is type confusion the GC mark phase crashes on
+# (observed: Engine emit segfault in gc_mark_outrefs). Guard loudly.
 @noinline function listSetRest(inConsCell::Cons{T}, inNewRest::Union{Nil, Cons})::Cons{T} where {T}
+  T === Any || inNewRest isa Union{Nil, Cons{T}} ||
+    error("listSetRest: heterogeneous rest (" * string(typeof(inNewRest)) *
+          ") into a typed Cons{" * string(T) * "} cell is not layout-safe")
   GC.@preserve inConsCell inNewRest begin
     slot = Ptr{Ptr{Cvoid}}(_value_ptr(inConsCell) + _tailOffset(Cons{T}))
     unsafe_store!(slot, _value_ptr(inNewRest))
