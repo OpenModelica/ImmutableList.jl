@@ -168,11 +168,13 @@ end
 Base.@assume_effects :foldable function listReverse(inLst::Cons{T}) where {T}
   local outLst = Cons{T}(inLst.head, nil)
   local cur::Any = inLst.tail
-  while cur !== nil
+  # End of chain is a type test, not an identity test against the Nil{Any}
+  # singleton: a producer may terminate with a typed Nil{T}.
+  while cur isa Cons
     # heterogeneous cells may be linked via listSetRest; widen when detected
     if !(cur isa Cons{T})
       local acc::List = outLst
-      while cur !== nil
+      while cur isa Cons
         acc = _cons(cur.head, acc)
         cur = cur.tail
       end
@@ -455,7 +457,7 @@ function List{TYPE}(C::Base.Generator{Cons{T0}, T1})::Cons{TYPE} where {TYPE, T0
   local iter::List{T0} =  C.iter
   local func = C.f
   local lst::List{TYPE} = nil
-  while iter !== nil
+  while iter isa Cons
     ih = iter.head
     iter = iter.tail
     lst = Cons{TYPE}(func(ih)::TYPE, lst)::Cons{TYPE}

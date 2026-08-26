@@ -84,7 +84,7 @@ function listArrayLiteral(lst::List{T})::Vector{T} where {T}
   local N = length(lst)
   local arr::Vector{T} = Vector{T}(undef, N)
   i = 1
-  while lst !== nil
+  while lst isa Cons
     arr[i] = lst.head
     i += 1
     lst = lst.tail
