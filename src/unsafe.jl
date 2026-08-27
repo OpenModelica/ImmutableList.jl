@@ -39,48 +39,27 @@ end
 
 """
  O(1). A destructive operation changing the rest part of a cons-cell.
+ Cons is mutable: this is a plain checked field store.
  NOTE: Make sure you do NOT create cycles as infinite lists are not handled well in the compiler.
 """
 @noinline function listSetRest(inConsCell::Cons{T}, inNewRest::Union{Nil, Cons{T}})::Cons{T} where {T}
-  GC.@preserve inConsCell inNewRest begin
-    slot = Ptr{Ptr{Cvoid}}(_value_ptr(inConsCell) + _tailOffset(Cons{T}))
-    unsafe_store!(slot, _value_ptr(inNewRest))
-  end
-  if inNewRest isa Cons
-    _queue_root(inConsCell)
-  end
+  setfield!(inConsCell, :tail, inNewRest)
   return inConsCell
 end
 
-# Heterogeneous fallback. LAYOUT SAFETY: only a Cons{Any} target has a plain
-# pointer tail slot; a typed cell stores an inline head and different offsets,
-# so a foreign rest there is type confusion the GC mark phase crashes on
-# (observed: Engine emit segfault in gc_mark_outrefs). Guard loudly.
+# Heterogeneous rest: a foreign chain spliced into a typed cell would have to
+# convert-copy, which silently detaches the chain. Keep it a loud error.
 @noinline function listSetRest(inConsCell::Cons{T}, inNewRest::Union{Nil, Cons})::Cons{T} where {T}
   T === Any || inNewRest isa Union{Nil, Cons{T}} ||
     error("listSetRest: heterogeneous rest (" * string(typeof(inNewRest)) *
-          ") into a typed Cons{" * string(T) * "} cell is not layout-safe")
-  GC.@preserve inConsCell inNewRest begin
-    slot = Ptr{Ptr{Cvoid}}(_value_ptr(inConsCell) + _tailOffset(Cons{T}))
-    unsafe_store!(slot, _value_ptr(inNewRest))
-  end
-  if inNewRest isa Cons
-    _queue_root(inConsCell)
-  end
+          ") into a typed Cons{" * string(T) * "} cell")
+  setfield!(inConsCell, :tail, inNewRest)
   return inConsCell
 end
 
 """ O(1). A destructive operation changing the \"first\" part of a cons-cell. """
 @noinline function listSetFirst(inConsCell::Cons{T}, inNewContent::T)::Cons{T} where {T}
-  GC.@preserve inConsCell inNewContent begin
-    base = _value_ptr(inConsCell) + _headOffset(Cons{T})
-    if isbitstype(T)
-      unsafe_store!(Ptr{T}(base), inNewContent)
-    else
-      unsafe_store!(Ptr{Ptr{Cvoid}}(base), _value_ptr(inNewContent))
-      _queue_root(inConsCell)
-    end
-  end
+  setfield!(inConsCell, :head, inNewContent)
   return inConsCell
 end
 
