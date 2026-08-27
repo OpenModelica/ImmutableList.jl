@@ -45,9 +45,7 @@ end
 const nil = Nil{Any}()
 list() = nil
 
-# Mutable so the deque/list surgery (listSetRest/listSetFirst) is a plain
-# checked field store with Julia's own write barrier, not a raw pointer store.
-mutable struct Cons{T}
+struct Cons{T}
   head::T
   tail::Union{Nil, Cons{T}}
 end
