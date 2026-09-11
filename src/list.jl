@@ -333,6 +333,9 @@ responsibly.
 # Homogeneous fast path: no typejoin, no tail conversion (the generic method
 # below converts the WHOLE tail when eltypes differ - O(n) per cons).
 _cons(head::T, tail::Cons{T}) where {T} = Cons{T}(head, tail)
+# A head inside the pinned cell type keeps the chain as it is: no join, no
+# tail conversion.
+_cons(head::A, tail::Cons{B}) where {B, A<:B} = Cons{B}(head, tail)
 
 function _cons(head::A, tail::Cons{B}) where {A,B}
   C = typejoin(A,B)
