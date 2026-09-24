@@ -222,7 +222,8 @@ end
 
 export listAppend
 export listReverse
-export listReverseInPlace
+# No `export listReverseInPlace`: it is defined only in Unsafe, so exporting it here
+# published a binding with no value into every module that uses ImmutableList.
 export listLength
 export listMember
 export listGet
