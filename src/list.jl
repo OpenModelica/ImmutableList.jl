@@ -74,19 +74,46 @@ Nil() = List()
   recursivly
 =#
 
-""" For converting lists with more than one element"""
-Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = let
-  List(S, x)
+#= A converting assignment REBUILDS the cons chain, so the target no longer
+   aliases the source. That is invisible at the call site and has already cost
+   one silent-truncation bug, so it can be made loud while typed list fields are
+   being rolled out: set STRICT_CONVERT[] = true and every rebuilding convert
+   throws, naming the producer. Off by default; behaviour is then unchanged. =#
+const STRICT_CONVERT = Ref(false)
+
+const _REBUILD_SEEN = Set{Tuple{DataType,Type}}()
+
+@noinline function _rebuild_convert(::Type{S}, x) where {S}
+  # REPORT, never throw: MetaModelica's @matchcontinue catches every exception
+  # and turns it into arm failure, so throwing here would hide the diagnosis
+  # behind an "unfinished match". Print each producer once instead.
+  if STRICT_CONVERT[]
+    k = (typeof(x), S)
+    if !(k in _REBUILD_SEEN)
+      push!(_REBUILD_SEEN, k)
+      Base.println(Base.stderr, "REBUILD-CONVERT ", typeof(x), " -> List{", S,
+                   "} (aliasing severed; fix the producer)")
+    end
+  end
+  return List(S, x)
 end
+
+""" For converting lists with more than one element"""
+Base.convert(::Type{List{S}}, x::Cons{T}) where {S, T <: S} = _rebuild_convert(S, x)
 
 """ For converting lists of lists """
 Base.convert(::Type{T}, x::Cons) where {T <: List} = let
   if (T === Nil)
     return x
   else
-    return x isa T ? x : List(eltype(T), x)
+    return x isa T ? x : _rebuild_convert(eltype(T), x)
   end
 end
+
+#= Empty lists: nil is Nil{Any}, but a List{T} annotation requires Nil{T}.
+   Zero-size immutable, so Nil{T}() is free. =#
+Base.convert(::Type{List{T}}, x::Nil) where {T} = Nil{T}()
+Base.convert(::Type{Nil{T}}, x::Nil) where {T} = Nil{T}()
 
 #= Identiy cases =#
 Base.convert(::Type{List{T}}, x::Cons{T}) where {T} = x
@@ -140,10 +167,21 @@ end
 """ O(n) Reverses an immutable list """
 Base.@assume_effects :foldable function listReverse(inLst::Cons{T}) where {T}
   local outLst = Cons{T}(inLst.head, nil)
-  inLst = inLst.tail
-  while inLst !== nil
-    outLst = Cons{T}(inLst.head, outLst)
-    inLst = inLst.tail
+  local cur::Any = inLst.tail
+  # End of chain is a type test, not an identity test against the Nil{Any}
+  # singleton: a producer may terminate with a typed Nil{T}.
+  while cur isa Cons
+    # heterogeneous cells may be linked via listSetRest; widen when detected
+    if !(cur isa Cons{T})
+      local acc::List = outLst
+      while cur isa Cons
+        acc = _cons(cur.head, acc)
+        cur = cur.tail
+      end
+      return acc
+    end
+    outLst = Cons{T}(cur.head, outLst)
+    cur = cur.tail
   end
   outLst
 end
@@ -171,11 +209,12 @@ function _listAppend(lst1::List{A}, lst2::List{B}) where {A, B}
     return lst2
   end
   local C::Type = typejoin(A, B)
-  lst2 = convert(List{C}, lst2)
+  local out::List = convert(List{C}, lst2)
   for c in listReverse(lst1)
-    lst2 = Cons{C}(convert(C, c), lst2)
+    # heterogeneous cells may carry elements outside typejoin(A, B); widen
+    out = (c isa C && out isa Union{Nil, Cons{C}}) ? Cons{C}(c, out) : _cons(c, out)
   end
-  lst2
+  out
 end
 
 """ For \"Efficient\" casting... O(N) * C" """
@@ -243,7 +282,9 @@ end
 function list(a::A, b::B, els...) where {A, B}
   local S::Type = typejoin(A, B, eltype(els))
   #@assert S != Any
-  if S == Any
+  if S == Any && get(ENV, "OM_WARN_ANYLIST", "") == "1"
+    # Off by default: Cons{Any} is a normal MetaModelica case, and the per-call
+    # @warn otherwise floods logs and dominates runtime in hot backend loops.
     local msg = "The resulting list became a list of any. Please check your code if this was not intentional.\n"
     msg *= string("Involved types:", A, B)
     @warn msg
@@ -289,7 +330,14 @@ may avoid future type conversions on the entire list to occur.
 Use this in particular in generated code where you cannot use cons
 responsibly.
 """
+# Homogeneous fast path: no typejoin, no tail conversion (the generic method
+# below converts the WHOLE tail when eltypes differ - O(n) per cons).
+_cons(head::T, tail::Cons{T}) where {T} = Cons{T}(head, tail)
+
 function _cons(head::A, tail::Cons{B}) where {A,B}
+  # A head inside the pinned cell type keeps the chain as it is: no join, no
+  # tail conversion. (A bound on the signature would collide with this method.)
+  head isa B && return Cons{B}(head, tail)
   C = typejoin(A,B)
   if isabstracttype(C)
     D = supertype(C)
@@ -327,6 +375,8 @@ Base.iterate(lst::Cons{T}) where T = (lst.head, lst.tail)
 function Base.iterate(l::List{T}, state::List{T}) where {T}
   iterate(state)
 end
+# Heterogeneous cells may be linked via listSetRest; the state eltype can differ.
+Base.iterate(l::List, state::List) = iterate(state)
 
 """
   For list comprehension. Unless we switch to mutable structs this is the way to go I think.
@@ -367,15 +417,14 @@ end
 author:johti17
 """
 function list(C::Base.Generator{Vector{T0}, T1}) where {T0, T1}
-  local iter::Vector{T0}=  C.iter
-  local func = C.f
-  local iLen = length(iter)
-  if iLen == 0
-    return nil
-  end
-  lst = _cons(func(last(C.iter)), nil)
-  for i in iLen-1:-1:1
-    lst = _cons((@inbounds func(iter[i])), lst)
+  local iter::Vector{T0} = C.iter
+  isempty(iter) && return nil
+  # Fixed-eltype build; see the Cons-generator method for the rationale.
+  local vals = Base.collect(Base.Generator(C.f, iter))
+  local S = eltype(vals)
+  local lst::List = nil
+  for i in lastindex(vals):-1:1
+    lst = Cons{S}((@inbounds vals[i]), lst)
   end
   return lst
 end
@@ -385,12 +434,14 @@ end
  author:johti17
  """
 function list(C::Base.Generator{Cons{T0}, T1}) where {T0, T1}
-  local iter =  C.iter
-  local func = C.f
-  local arr = listReverse(iter)
-  local lst = nil
-  for i in arr
-    lst = _cons(func(i), lst)
+  # Map into a Vector first: the eltype is computed ONCE and the cons chain is
+  # built with a fixed Cons{S} - the per-element _cons typejoin/convert otherwise
+  # rebuilds the accumulated tail on every eltype change (quadratic).
+  local vals = Base.collect(Base.Generator(C.f, C.iter))
+  local S = eltype(vals)
+  local lst::List = nil
+  for i in lastindex(vals):-1:1
+    lst = Cons{S}((@inbounds vals[i]), lst)
   end
   return lst
 end
@@ -409,7 +460,7 @@ function List{TYPE}(C::Base.Generator{Cons{T0}, T1})::Cons{TYPE} where {TYPE, T0
   local iter::List{T0} =  C.iter
   local func = C.f
   local lst::List{TYPE} = nil
-  while iter !== nil
+  while iter isa Cons
     ih = iter.head
     iter = iter.tail
     lst = Cons{TYPE}(func(ih)::TYPE, lst)::Cons{TYPE}
