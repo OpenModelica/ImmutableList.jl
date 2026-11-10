@@ -1,33 +1,30 @@
-/#
- # This file is part of OpenModelica.
- #
- # Copyright (c) 1998-Current year, Open Source Modelica Consortium (OSMC),
- # c/o Linköpings universitet, Department of Computer and Information Science,
- # SE-58183 Linköping, Sweden.
- #
- # All rights reserved.
- #
- # THIS PROGRAM IS PROVIDED UNDER THE TERMS OF GPL VERSION 3 LICENSE OR
- # THIS OSMC PUBLIC LICENSE (OSMC-PL) VERSION 1.2.
- # ANY USE, REPRODUCTION OR DISTRIBUTION OF THIS PROGRAM CONSTITUTES
- # RECIPIENT'S ACCEPTANCE OF THE OSMC PUBLIC LICENSE OR THE GPL VERSION 3,
- # ACCORDING TO RECIPIENTS CHOICE.
- #'
- # The OpenModelica software and the Open Source Modelica
- # Consortium (OSMC) Public License (OSMC-PL) are obtained
- # from OSMC, either from the above address,
- # from the URLs: http://www.ida.liu.se/projects/OpenModelica or
- # http://www.openmodelica.org, and in the OpenModelica distribution.
- # GNU version 3 is obtained from: http://www.gnu.org/copyleft/gpl.html.
- #
- # This program is distributed WITHOUT ANY WARRANTY; without
- # even the implied warranty of  MERCHANTABILITY or FITNESS
- # FOR A PARTICULAR PURPOSE, EXCEPT AS EXPRESSLY SET FORTH
- # IN THE BY RECIPIENT SELECTED SUBSIDIARY LICENSE CONDITIONS OF OSMC-PL.
- #
- # See the full OSMC Public License conditions for more details.
- #
- #/
+#=
+This file is part of OpenModelica.
+Copyright (c) 1998-2026, Open Source Modelica Consortium (OSMC),
+c/o Linköpings universitet, Department of Computer and Information Science,
+SE-58183 Linköping, Sweden.
+
+All rights reserved.
+
+THIS PROGRAM IS PROVIDED UNDER THE TERMS OF THE BSD NEW LICENSE OR THE
+GPL VERSION 3 LICENSE OR THE OSMC PUBLIC LICENSE (OSMC-PL) VERSION 1.2.
+ANY USE, REPRODUCTION OR DISTRIBUTION OF THIS PROGRAM CONSTITUTES
+RECIPIENT'S ACCEPTANCE OF THE OSMC PUBLIC LICENSE OR THE GPL VERSION 3,
+ACCORDING TO RECIPIENTS CHOICE.
+
+The OpenModelica software and the OSMC (Open Source Modelica Consortium)
+Public License (OSMC-PL) are obtained from OSMC, either from the above
+address, from the URLs: http://www.openmodelica.org or
+http://www.ida.liu.se/projects/OpenModelica, and in the OpenModelica
+distribution. GNU version 3 is obtained from:
+http://www.gnu.org/copyleft/gpl.html. The New BSD License is obtained from:
+http://www.opensource.org/licenses/BSD-3-Clause.
+
+This program is distributed WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE, EXCEPT AS
+EXPRESSLY SET FORTH IN THE BY RECIPIENT SELECTED SUBSIDIARY LICENSE
+CONDITIONS OF OSMC-PL.
+=#
 
 """
   This module provides an immutable list compatible with
@@ -122,8 +119,14 @@ Base.convert(::Type{Nil}, x::Nil) = nil
 
 
 
-Base.promote_rule(a::Type{Cons{T}}, b::Type{Cons{S}}) where {T,S} = let
-  el_same(promote_type(T,S), a, b)
+"""
+    promote_rule(::Type{Cons{T}}, ::Type{Cons{S}})
+
+As for Vectors: the list type whose element type is `promote_type(T, S)`, `Cons` when it is neither.
+"""
+function Base.promote_rule(a::Type{Cons{T}}, b::Type{Cons{S}}) where {T, S}
+  local U::Type = promote_type(T, S)
+  return U === T ? a : U === S ? b : Cons
 end
 
 #= Definition of eltype =#
@@ -143,9 +146,13 @@ Base.eltype(::Type{Nil}) = let
   Nil
 end
 
-Base.eltype(::Nil) = let
-  Any
-end
+"""
+    eltype(::Nil{T})
+
+`T`: `Any` for `nil`, the declared type for the empty list a `List{T}` annotation makes.
+"""
+Base.eltype(::Nil{T}) where {T} = T
+Base.eltype(::Type{Nil{T}}) where {T} = T
 
 """
   O(1) Reverse of a nil list is nil
@@ -225,14 +232,12 @@ end
 #= Support for primitive constructs. Numbers. Integer bool e.t.c =#
 function list(els::T...)::List{T} where {T <: Number}
   if @generated
-    #println("Generate 1")
     lst = :(nil)
     for i in length(els):-1:1
       lst = :(Cons{$(T)}(els[$(i)], $(lst)))
     end
     return lst
   else
-    #println("Generate 2")
     local lst::List{T} = nil
     for i in length(els):-1:1
       lst = Cons{T}(els[i], lst)
@@ -243,14 +248,12 @@ end
 
 function list(els::T...)::List{T} where {T}
   if @generated
-    println("Generate 1")
     lst = :(nil)
     for i in length(els):-1:1
       lst = :(Cons{$(T)}(els[$(i)], $(lst)))
     end
     return lst
   else
-    #println("Generate 2")
     local lst::List{T} = nil
     for i in length(els):-1:1
       lst = Cons{T}(els[i], lst)
@@ -459,13 +462,16 @@ function List{TYPE}(C::Base.Generator{Cons{T0}, T1})::Cons{TYPE} where {TYPE, T0
 end
 
 import ..ImmutableListException
+"""
+    List{TYPE}(C::Base.Generator)::List{TYPE}
+
+The list of the generator's values, each a `TYPE`, in its order; the function is called in that order too.
+"""
 function List{TYPE}(C::Base.Generator)::List{TYPE} where {TYPE}
-  local iter = C.iter
-  local func::Function = C.f
-  local seq = collect(iter)
+  local vals::Vector{TYPE} = TYPE[(C.f(x))::TYPE for x in C.iter]
   local lst::List{TYPE} = nil
-  for i in reverse!(seq)
-    lst = Cons{TYPE}(func(i)::TYPE, lst)::Cons{TYPE}
+  for i::Int in lastindex(vals):-1:1
+    lst = Cons{TYPE}((@inbounds vals[i]), lst)
   end
   return lst
 end

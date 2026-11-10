@@ -182,6 +182,9 @@ end
   lst = List{Int}(i*2 for i in list(1,2,3))
   @test sum(lst) == 12
   #= Test guard statement =#
+  #= Over another iterable the function is called in the iteration order. =#
+  local order = Int[]
+  @test collect(List{Int}((push!(order, i); 2 * i) for i in 1:3)) == [2, 4, 6] && order == [1, 2, 3]
   lst2 = List{Int}(i for i in list(1,2,3) if i == 3)
   @test listHead(lst2) == 3
   @test length(lst2) == 1
@@ -368,4 +371,76 @@ end
   @test Unsafe.listArrayLiteral(list(1, 2, 3)) == [1, 2, 3]
   @test Unsafe.listArrayLiteral(list("x", "y")) == ["x", "y"]
   @test Unsafe.listArrayLiteral(nil) isa Vector
+end
+
+@testset "Julia collection interfaces" begin
+  local l = list(3, 1, 2)
+
+  @testset "construction and conversion" begin
+    @test List([1, 2]) == list(1, 2) && List([1, 2]) isa Cons{Int}
+    @test List{Float64}((1, 2)) isa Cons{Float64}
+    @test List(1:3) == list(1, 2, 3)
+    @test List(x^2 for x in 1:3) == list(1, 4, 9)
+    @test List(l) === l
+    @test List(Int[]) === nil && List{Int}() === nil
+    @test collect(l) == [3, 1, 2] && collect(l) isa Vector{Int}
+    @test eltype(Nil{Int}()) === Int && eltype(nil) === Any
+  end
+
+  @testset "indexing" begin
+    @test l[1] == 3 && l[3] == 2 && l[end] == 2
+    @test_throws BoundsError l[0]
+    @test_throws BoundsError l[4]
+    @test_throws BoundsError nil[1]
+    @test l[2:end] === l.tail
+    @test l[1:2] == list(3, 1)
+    @test l[2:1] === nil
+    @test_throws BoundsError l[2:4]
+    @test firstindex(l) == 1 && lastindex(l) == 3 && keys(l) == 1:3 && eachindex(l) == 1:3
+    @test findfirst(==(1), l) == 2 && findfirst(==(7), l) === nothing
+    @test findall(isodd, l) == [1, 2]
+  end
+
+  @testset "first, last, tail" begin
+    @test first(l) == 3 && last(l) == 2 && tail(l) === l.tail
+    @test first(nil) === nil && last(nil) === nil && tail(nil) === nil && tail((1, 2)) === (2,)
+    @test first(l, 2) == list(3, 1) && first(l, 5) === l && first(l, 0) === nil
+    @test last(l, 2) === l.tail && last(l, 5) === l && last(l, 0) === nil
+    @test_throws ArgumentError first(l, -1)
+    h, t... = l
+    @test h == 3 && t === l.tail
+  end
+
+  @testset "functions that build a list" begin
+    @test map(x -> x + 1, l) == list(4, 2, 3) && map(x -> x + 1, l) isa Cons{Int}
+    @test map(string, l) isa Cons{String}
+    @test map(+, l, list(10, 20)) == list(13, 21)
+    @test map(x -> x + 1, nil) === nil
+    @test filter(isodd, l) == list(3, 1) && filter(isodd, l) isa Cons{Int}
+    @test filter(x -> true, l) === l && filter(x -> false, l) === nil && filter(isodd, nil) === nil
+    @test reverse(l) == list(2, 1, 3) && collect(Iterators.reverse(l)) == [2, 1, 3]
+    @test foldr(-, l) == 3 - (1 - 2)
+    @test sort(l) == list(1, 2, 3) && sort(l; rev = true) == list(3, 2, 1) && sort(nil) === nil
+    @test sort(l, (a, b) -> a > b) == list(1, 2, 3) # MetaModelica: true means a after b
+    local a = list(1, 2)
+    local b = list(3)
+    @test vcat(a, b) == list(1, 2, 3) && vcat(a, b).tail.tail === b
+    @test vcat(list(1), list(2.5)) == list(1.0, 2.5) && vcat(list(1), list(2.5)) isa Cons{Float64}
+    @test vcat(nil, a, nil) == a && vcat(nil, nil) === nil
+    @test empty(l) === nil && copy(l) === l
+  end
+
+  @testset "equality, hashing, printing" begin
+    @test list([1]) == list([1]) && isequal(list([1]), list([1]))
+    @test list(1) == list(1.0) && list(1) != list(1, 2) && nil == Nil{Int}()
+    @test ismissing(list(missing) == list(missing)) && isequal(list(missing), list(missing))
+    @test hash(list([1])) == hash(list([1])) && hash(list(1)) != hash([1])
+    @test Dict(list(1, 2) => :a)[list(1, 2)] === :a
+    @test sprint(show, list("a", "b")) == "list{String}[\"a\", \"b\"]"
+    @test sprint(show, MIME"text/plain"(), list(1, 2)) == "list{Int64}[1, 2]"
+    @test string(list("a", "b")) == "list{String}[a,b]"
+    @test promote_type(Cons{Int}, Cons{Float64}) === Cons{Float64}
+  end
+
+  @test isempty(Test.detect_ambiguities(ImmutableList))
 end
