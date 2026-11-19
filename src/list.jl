@@ -376,14 +376,14 @@ Base.iterate(l::List, state::List) = iterate(state)
   Seems to be more efficient then what the omc currently does.
 """
 function list(F, C::Base.Generator)
-  #local seqArr = collect(seq)
-  local iter = C.iter
   local func = C.f
-  local lst = nil
-  local seq = collect(iter)
-  local rseq = reverse!(seq)
-  for i in rseq
-    lst = func(i) <| lst
+  local lst::List = nil
+  #= an Array, whatever the generator's iterator (its type is often not inferred): its elements consed from the last,
+     without a call that dispatches on the iterator's type (`reverse!` of a non-inferred value: a package's
+     `reverse!` method invalidated every caller, 2,188 instances at `using OM`, 2026-11-18) =#
+  local seq::Array = collect(C.iter)
+  for k::Int in length(seq):-1:1
+    lst = (func(seq[k]) <| lst)::List
   end
   return lst
 end
