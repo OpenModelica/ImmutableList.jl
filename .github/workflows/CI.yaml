@@ -2,7 +2,23 @@ name: Tests
 
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
+      - 'COPYING'
+      - 'CITATION.bib'
+      - '.gitignore'
+      - '.github/workflows/omjl.yml'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE*'
+      - 'COPYING'
+      - 'CITATION.bib'
+      - '.gitignore'
+      - '.github/workflows/omjl.yml'
 
 permissions:
   contents: read
